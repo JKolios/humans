@@ -1,14 +1,16 @@
+# TODO: prevent double application of same status
 class Status(object):
     status_applied_message = ''
     effect_applied_message = ''
     status_removed_message = ''
 
-    def __init__(self, name=None, duration=1):
-        self.name = name if name else 'Generic Status'
+    def __init__(self, duration=1):
         self.duration = duration
+        self.actor_affected = None
 
     def apply_to_actor(self, actor):
         self.actor_affected = actor
+        # Do not apply the same effect object twice
         if self not in self.actor_affected.statuses:
             if self.status_applied_message:
                 print self.status_applied_message % self.actor_affected.name
@@ -18,8 +20,10 @@ class Status(object):
         if self.effect_applied_message:
             print self.effect_applied_message % self.actor_affected.name
         self._apply_effect()
-        if self.duration <= 0:
+        if self.duration == 0:
             self._remove_from_actor()
+        elif self.duration < 0:
+            raise InvalidStatusDuration
 
     def _remove_from_actor(self):
         if self in self.actor_affected.statuses:
@@ -36,12 +40,14 @@ class Poison(Status):
     effect_applied_message = '%s suffers poison damage!'
     status_removed_message = '%s has recovered from poison!'
 
-    def __init__(self, duration, intensity):
-        Status.__init__(self, name='Poisoned', duration=duration)
-        self.intensity = intensity
+    def __init__(self, kwargs):
+        self.duration = kwargs['duration']
+        self.intensity = kwargs['intensity']
+        self.name = 'Poisoned'
+        Status.__init__(self, duration=self.duration)
 
     def _apply_effect(self):
-        self.actor_affected._modify_hp(-self.intensity)
+        self.actor_affected.modify_hp(-self.intensity)
         self.duration -= 1
 
 
@@ -50,11 +56,13 @@ class Bleeding(Status):
     effect_applied_message = '%s suffers bleed damage!'
     status_removed_message = '%s has stopped bleeding!'
 
-    def __init__(self, duration):
-        Status.__init__(self, name='Bleeding', duration=duration)
+    def __init__(self, kwargs):
+        self.duration = kwargs['duration']
+        self.name = 'Bleeding'
+        Status.__init__(self, duration=self.duration)
 
     def _apply_effect(self):
-        self.actor_affected._modify_hp(-self.duration)
+        self.actor_affected.modify_hp(-self.duration)
         self.duration -= 1
 
 
@@ -62,8 +70,10 @@ class Frozen(Status):
     status_applied_message = '%s has been encased in ice!'
     status_removed_message = '%s has thawed!'
 
-    def __init__(self, duration):
-        Status.__init__(self, name='Frozen', duration=duration)
+    def __init__(self, kwargs):
+        self.duration = kwargs['duration']
+        self.name = 'Frozen'
+        Status.__init__(self, duration=self.duration)
 
     def apply_to_actor(self, actor):
         self.actor_affected = actor
@@ -82,16 +92,48 @@ class Frozen(Status):
             self.actor_affected.can_act = True
 
 
+class Healing(Status):
+    effect_applied_message = '%s is being healed!'
+
+    def __init__(self, kwargs):
+        self.duration = kwargs['duration']
+        self.intensity = kwargs['intensity']
+        self.name = 'Healing'
+        Status.__init__(self, duration=self.duration)
+
+    def _apply_effect(self):
+        self.actor_affected.modify_hp(self.intensity)
+        self.duration -= 1
+
 
 class Death(Status):
     status_applied_message = '%s has died!'
 
     def __init__(self):
-        Status.__init__(self, name='Dead', duration=1)
+        Status.__init__(self, duration=-1)
 
     def apply_to_actor(self, actor):
         self.actor_affected = actor
         if self not in self.actor_affected.statuses:
             print self.status_applied_message % self.actor_affected.name
             self.actor_affected.statuses = [self]
+
+
+class InvalidStatusDuration(Exception):
+
+    def __init__(self, actor, status):
+        super(InvalidStatusDuration, self).__init__()
+        self.actor = actor
+        self.status = status
+
+
+class InvalidFactoryArgument(Exception):
+    pass
+
+
+def make(status_class, kwargs):
+    if not Status.__subclasscheck__(status_class):
+        raise InvalidFactoryArgument
+    return status_class(kwargs)
+
 

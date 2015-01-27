@@ -20,7 +20,12 @@ class Creature(object):
         self.regen_per_turn = 1
 
         self.armor = 0
-        self.magic_resistance = 0
+        self.resistances = {
+            'energy': 0,
+            'frost': 0,
+            'fire': 0,
+            'shock': 0
+        }
 
         self.attacks = []
 
@@ -43,20 +48,20 @@ class Creature(object):
         try:
             for status in self.statuses:
                 status.apply_effect_and_check_duration()
-            if len(self.statuses) == 0:
-                self._modify_hp(self.regen_per_turn)
+            if len(self.statuses) == 0 and self.hp < self.max_hp:
+                self.modify_hp(self.regen_per_turn)
 
         except Death as e:
             raise e
 
-    def _modify_hp(self, hp_delta):
+    def modify_hp(self, hp_delta):
         actual_delta = min(hp_delta, self.max_hp - self.hp)
         self.hp += actual_delta
         if actual_delta > 0:
             print "%s gained %s HP!" % (self.name, abs(hp_delta))
         elif actual_delta < 0:
             print "%s lost %s HP!" % (self.name, abs(hp_delta))
-        else:
+        elif actual_delta == 0 and hp_delta > 0 :
             print "There was no effect!"
         if self.hp <= 0:
             statuses.Death().apply_to_actor(self)
@@ -65,41 +70,57 @@ class Creature(object):
     def attack(self, target=None, available_targets=None, attack_used=None):
         if not target and not available_targets:
             raise InvalidAttackCall
+
+        if not attack_used:
+            attack_used = self._select_attack()
+
+        if attack_used not in self.attacks:
+            raise InvalidAttackUsed
+
         if not target:
-            target = self._select_target(available_targets)
+            target = self._select_target(available_targets, attack_used)
 
         if not hasattr(target, 'receive_attack') and callable(getattr(target, 'receive_attack')):
             raise InvalidAttackTarget
         # TODO: Introduce attacks hitting or missing based on accuracy
 
-        if not attack_used:
-            attack_used = self._select_attack(target)
-
-        if attack_used not in self.attacks:
-            raise InvalidAttackUsed
-
-        print '%s attacks %s using %s!' % (self.name, target.name, attack_used.name)
+        print attack_used.attack_message(self.name, target.name)
         target.receive_attack(attack_used)
 
-    @staticmethod
-    def _select_target(available_targets):
+    def _select_target(self, available_targets, attack):
             # TODO: Target selection logic?
+            if attack.is_heal:
+                return self
             return choice(available_targets)
 
-    def _select_attack(self, target):
+    def _select_attack(self):
         # TODO: Attack selection logic? Probably based on target
+        if self._low_hp():
+            heals_available = [attack for attack in self.attacks if attack.is_heal]
+            if heals_available:
+                return choice(heals_available)
+
         return choice(self.attacks)
+
+    def _low_hp(self):
+        return self.hp <= self.max_hp * 0.2
 
     def receive_attack(self, attack):
         try:
-            if 'physical' in attack.types:
-                self._modify_hp(-(attack.physical_damage - self.armor))
-            if 'magical' in attack.types:
-                self._modify_hp(-(attack.magical_damage - self.magic_resistance))
+            if hasattr(attack, 'damage'):
+                for damage_type, damage_magnitude in attack.damage.iteritems():
+                    # physical damage is calculated separately because it's intended to have other mechanics in the future
+                    # TODO: specify other mechanics
+                    if damage_type == 'physical':
+                        self.modify_hp(-(damage_magnitude - self.armor))
+                    # resolve all other types of damage against the target's resistance with the same name
+                    else:
+                        self.modify_hp(-(damage_magnitude - self.resistances.get(damage_type, 0)))
+
             if hasattr(attack, 'applies_statuses'):
                 for status in attack.applies_statuses:
-                    status.apply_to_actor(self)
-
+                    new_status = statuses.make(status[0], status[1])
+                    new_status.apply_to_actor(self)
 
         except Death as e:
             raise e
@@ -136,8 +157,22 @@ class Warrior(Human):
 class Mage(Human):
     def __init__(self, name):
         Human.__init__(self, name)
-        self.attacks += [attacks.RayOfFrost]
+        self.attacks += [attacks.Fireball]
         self.armor = 0
+
+
+class Priest(Human):
+    def __init__(self, name):
+        Human.__init__(self, name)
+        self.attacks += [attacks.RayOfFrost, attacks.MinorHeal]
+        self.armor = 0
+
+
+class Brigand(Human):
+    def __init__(self, name):
+        Human.__init__(self, name)
+        self.attacks += [attacks.SerratedCleaver]
+        self.armor = 1
 
 
 class InvalidAttackCall(Exception):
@@ -155,8 +190,5 @@ class InvalidAttackTarget(Exception):
 class Death(Exception):
     def __init__(self, dead_creature):
 
-        # Call the base class constructor with the parameters it needs
         super(Death, self).__init__()
-
-        # Now for your custom code...
         self.dead_creature = dead_creature

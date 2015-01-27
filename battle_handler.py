@@ -1,21 +1,14 @@
 import creatures
 
-DEFAULT_ACTOR_LIST = [creatures.Thief('Alice'),
-                      creatures.Warrior('Bob'),
-                      creatures.Mage('Charles')]
-
 
 class InvalidActor(Exception):
     pass
 
 
 class Battlehandler(object):
-    def __init__(self, actors=DEFAULT_ACTOR_LIST):
-        try:
-            self._validate_actor_list(actors)
-        except InvalidActor:
-            print 'Invalid initial actor list, using default'
-            self.actors = DEFAULT_ACTOR_LIST
+    def __init__(self, actors):
+
+        self._validate_actor_list(actors)
         self.actors = actors
         self.active_actors = self.actors[:]
 
