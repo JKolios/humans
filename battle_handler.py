@@ -32,14 +32,19 @@ class Battlehandler(object):
                 if e.dead_creature is actor:
                     continue
 
+            actor.process_cooldowns()
+
         self.turn_number += 1
 
     def run_turns(self):
         self.turn_number = 1
         while len(self.active_actors) > 1:
             self._turn_loop()
-        print '%s has conquered!' % self.active_actors[0].name
-
+        if len(self.active_actors) == 1:
+            print '%s has conquered!' % self.active_actors[0].name
+            print '\nLast fighter standing\n%s' % self.active_actors[0]
+        elif len(self.active_actors) == 0:
+            print 'There were no survivors!'
 
 
     @staticmethod

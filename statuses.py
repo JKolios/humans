@@ -127,13 +127,16 @@ class InvalidStatusDuration(Exception):
         self.status = status
 
 
+def status_factory(status_class, kwargs):
+    if not Status.__subclasscheck__(status_class):
+        raise InvalidFactoryArgument
+    return status_class(kwargs)
+
+
 class InvalidFactoryArgument(Exception):
     pass
 
 
-def make(status_class, kwargs):
-    if not Status.__subclasscheck__(status_class):
-        raise InvalidFactoryArgument
-    return status_class(kwargs)
+
 
 
