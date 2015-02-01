@@ -8,7 +8,9 @@ class Attack(object):
     name = 'Generic Attack'
     is_heal = False
     cooldown_per_use = 0
-    attack_description = '%s attacks %s using the abstract notion of attacking! You broke something!'
+    accuracy = 1.0
+    attempt_description = '%s attacks %s using the abstract notion of attacking! You broke something!'
+    success_description = '%s succeeded using the abstract notion of attacking! You broke something harder!'
 
     def __init__(self, kwargs):
         # kwargs may be used in the future to supply instance init data
@@ -26,15 +28,25 @@ class Attack(object):
     def process_cooldown(self):
         self.cooldown = max(self.cooldown-1, 0)
 
+    @classmethod
+    def attempt_message(cls, user, target):
+        if cls.attempt_description.count('%s') == 1:
+            return cls.attempt_description % user
+        elif cls.attempt_description.count('%s') == 2:
+            return cls.attempt_description % (user, target)
+        elif cls.attempt_description.count('%s') == 3:
+            return cls.attempt_description % (user, target, cls.name)
+        else:
+            return 'Something indescribable happens!'
 
     @classmethod
-    def attack_message(cls, user, target):
-        if cls.attack_description.count('%s') == 1:
-            return cls.attack_description % user
-        elif cls.attack_description.count('%s') == 2:
-            return cls.attack_description % (user, target)
-        elif cls.attack_description.count('%s') == 3:
-            return cls.attack_description % (user, target, cls.name)
+    def success_message(cls, target):
+        if cls.success_description.count('%s') == 0:
+            return cls.success_description
+        elif cls.success_description.count('%s') == 1:
+            return cls.success_description % target
+        elif cls.success_description.count('%s') == 2:
+            return cls.success_description % (cls.name, target)
         else:
             return 'Something indescribable happens!'
 
@@ -43,14 +55,16 @@ class Fists(Attack):
     name = 'Fists'
     damage = {'physical': 2}
     accuracy = 0.8
-    attack_description = '%s punches %s!'
+    attempt_description = '%s punches %s!'
+    success_description = 'The punch connects!'
 
 
 class Broadsword(Attack):
     name = 'Broadsword'
     damage = {'physical': 10}
     accuracy = 0.75
-    attack_description = '%s swings at %s with a %s!'
+    attempt_description = '%s swings at %s with a %s!'
+    success_description = 'The %s slices through %s\'s flesh!'
 
 
 class PoisonedDagger(Attack):
@@ -58,7 +72,8 @@ class PoisonedDagger(Attack):
     damage = {'physical': 5}
     applies_statuses = [(statuses.Poison, {'duration': 4, 'intensity': 4})]
     accuracy = 0.75
-    attack_description = '%s stabs %s with a %s!'
+    attempt_description = '%s stabs at %s with a %s!'
+    success_description = 'The %s digs deep through %s\'s body, releasing poison!'
 
 
 class SerratedCleaver(Attack):
@@ -66,7 +81,8 @@ class SerratedCleaver(Attack):
     damage = {'physical': 8}
     applies_statuses = [(statuses.Bleeding, {'duration': 5})]
     accuracy = 0.8
-    attack_description = '%s swings at %s with a %s! Blood pours from the wound!'
+    attempt_description = '%s swings at %s with a %s!'
+    success_description = 'The %s mangles %s\'s flesh! Blood pours from the wound!'
 
 
 class Fireball(Attack):
@@ -74,7 +90,8 @@ class Fireball(Attack):
     damage = {'fire': 15}
     cooldown_per_use = 1
     accuracy = 0.6
-    attack_description = '%s throws a fireball at %s!'
+    attempt_description = '%s throws a fireball at %s!'
+    success_description = 'The fireball hits with a tremendous explosion!'
 
 
 class MinorHeal(Attack):
@@ -83,7 +100,8 @@ class MinorHeal(Attack):
     is_heal = True
     applies_statuses = [(statuses.Healing, {'duration': 1, 'intensity': 10})]
     cooldown_per_use = 2
-    attack_description = '%s uses Minor Heal!'
+    attempt_description = '%s uses Minor Heal!'
+    success_description = '%s\'s wounds start to close!'
 
 
 class RayOfFrost(Attack):
@@ -92,16 +110,17 @@ class RayOfFrost(Attack):
     applies_statuses = [(statuses.Frozen, {'duration': 2})]
     accuracy = 0.6
     cooldown_per_use = 2
-    attack_description = '%s casts a Ray of Frost on %s!'
+    attempt_description = '%s casts a Ray of Frost on %s!'
+    success_description = 'The ray finds its target. The air around %s instantly freezes!'
 
 
 class Banhammer(Attack):
     name = 'Banhammer'
     damage = {'energy': 150}
-    accuracy = 1.0
-    magical_damage = 150
+    accuracy = 0.6
     cooldown_per_use = 1
-    attack_description = '%s erases %s from existance!'
+    attempt_description = '%s swings the Banhammer at %s!'
+    success_description = 'No trace of %s\'s existence remains in this world!'
 
 
 def attack_factory(status_class, kwargs):

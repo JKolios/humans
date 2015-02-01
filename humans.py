@@ -1,15 +1,14 @@
-import creatures
+import actors
 from battle_handler import Battlehandler
 
-""" TODO: add new statuses(STUUUNNN), Heals and heal target logic?, Random events per turn, review damage types,
-ACCURACY."""
+""" TODO: add new statuses(STUUUNNN), Heals and heal target logic?, Random events per turn."""
 
-DEFAULT_ACTOR_LIST = [creatures.Thief('Alice'),
-                      creatures.Warrior('Bob'),
-                      creatures.Mage('Charles'),
-                      creatures.Priest('Derek'),
-                      creatures.Brigand('Ed'),
-                      # creatures.Devastator('Fred')
+DEFAULT_ACTOR_LIST = [actors.Thief('Alice'),
+                      actors.Warrior('Bob'),
+                      actors.Mage('Charles'),
+                      actors.Priest('Derek'),
+                      actors.Brigand('Ed'),
+                      # actors.Devastator('Fred')
 ]
 
 

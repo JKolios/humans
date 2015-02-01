@@ -1,4 +1,4 @@
-import creatures
+import actors
 
 
 class InvalidActor(Exception):
@@ -6,10 +6,10 @@ class InvalidActor(Exception):
 
 
 class Battlehandler(object):
-    def __init__(self, actors):
+    def __init__(self, actor_list):
 
-        self._validate_actor_list(actors)
-        self.actors = actors
+        self._validate_actor_list(actor_list)
+        self.actors = actor_list
         self.active_actors = self.actors[:]
 
         self.turn_number = 0
@@ -21,13 +21,13 @@ class Battlehandler(object):
                 available_targets = [target for target in self.active_actors if target is not actor]
                 try:
                     actor.attack(available_targets=available_targets)
-                except creatures.Death as e:
+                except actors.Death as e:
                     self.active_actors.remove(e.dead_creature)
                     if e.dead_creature is actor:
                         continue
             try:
                 actor.process_statuses()
-            except creatures.Death as e:
+            except actors.Death as e:
                 self.active_actors.remove(e.dead_creature)
                 if e.dead_creature is actor:
                     continue
@@ -46,10 +46,9 @@ class Battlehandler(object):
         elif len(self.active_actors) == 0:
             print 'There were no survivors!'
 
-
     @staticmethod
     def _validate_actor_list(actor_list):
             for actor in actor_list:
-                if not issubclass(actor.__class__, creatures.Creature):
+                if not issubclass(actor.__class__, actors.Actor):
                     raise InvalidActor
 
