@@ -1,5 +1,5 @@
 import actors
-from battle_handler import Battlehandler
+from battle.battle_handler import Battlehandler
 
 """ TODO: add new statuses(STUUUNNN), Heals and heal target logic?, Random events per turn."""
 
