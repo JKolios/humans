@@ -8,9 +8,9 @@ DEFAULT_ACTOR_LIST = [actors.Thief('Alice'),
                       actors.Mage('Charles'),
                       actors.Priest('Derek'),
                       actors.Brigand('Ed'),
-                      # actors.Devastator('Fred')
+                      # actors.Devastator('Fred'),
+                      actors.Grenadier('Garry')
 ]
-
 
 if __name__ == '__main__':
     handler = Battlehandler(DEFAULT_ACTOR_LIST)

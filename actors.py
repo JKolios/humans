@@ -1,16 +1,17 @@
 from random import choice, random
 
-from attacks import *
+from actions import *
 import statuses
 
 
 DEFAULT_MAX_HP = 100
 
-status_string = """%s\nCLASS: %s\nHP: %s\nSTATUSES: %s """
+status_string_living = '%s\nCLASS: %s\nHP: %s\nSTATUSES: %s'
+status_string_dead = '%s\nCLASS: %s\n-DEAD-'
 
 
 class Actor(object):
-    attacks_owned_by_class = []
+    actions_owned_by_class = []
 
     def __init__(self, name):
         self.name = name
@@ -29,22 +30,22 @@ class Actor(object):
             'shock': 0
         }
 
-        self.attacks = []
+        self.actions = []
 
         self.can_act = True
 
     def __repr__(self):
         if statuses.Death in self.statuses:
-            return '%s\nCLASS: %s\n-DEAD-' % (self.name, self.__class__.__name__)
+            return status_string_dead % (self.name, self.__class__.__name__)
         else:
-            return status_string % (
+            return status_string_living % (
                 self.name, self.__class__.__name__,
                 self.hp,
                 [status.name for status in self.statuses])
 
-    def _instantiate_attacks(self):
-        for init_tuple in self.attacks_owned_by_class:
-            self.attacks.append(attack_factory(init_tuple[0], init_tuple[1]))
+    def _instantiate_actions(self):
+        for init_tuple in self.actions_owned_by_class:
+            self.actions.append(action_factory(init_tuple[0], init_tuple[1]))
 
     def set_max_hp(self, max_hp):
         self.max_hp = max_hp
@@ -73,66 +74,80 @@ class Actor(object):
             statuses.Death().apply_to_actor(self)
             raise Death(self)
 
-    def attack(self, target=None, available_targets=None, attack_used=None):
+    def take_action(self, target=None, available_targets=None, action_used=None):
         if not target and not available_targets:
-            raise InvalidAttackCall
+            raise InvalidActionCall
 
-        # attack selection phase
-        if not attack_used:
-            attack_used = self._select_attack()
-            if attack_used is None:
+        # action selection phase
+        if not action_used:
+            action_used = self._select_action()
+            if action_used is None:
                 return
 
-        if attack_used not in self.attacks:
-            raise InvalidAttackUsed
+        if action_used not in self.actions:
+            raise InvalidActionUsed
 
         # target selection phase
         if not target:
-            target = self._select_target(available_targets, attack_used)
+            target = self._select_target(available_targets, action_used)
 
-        if not hasattr(target, 'receive_attack') or not callable(getattr(target, 'receive_attack')):
-            raise InvalidAttackTarget
+        if not hasattr(target, 'receive_action') or not callable(getattr(target, 'receive_action')):
+            raise InvalidActionTarget
 
         # cooldown application
-        attack_used.use()
+        action_used.use()
 
-        print attack_used.attempt_message(self.name, target.name)
-        target.receive_attack(attack_used)
+        print action_used.generate_message('attempt', self.name, target.name)
+        target.receive_action(action_used)
 
-    def _select_target(self, available_targets, attack):
+    def _select_target(self, available_targets, action):
         # TODO: Target selection logic?
-        if attack.is_heal:
+        if action.is_heal:
             return self
         return choice(available_targets)
 
-    def _select_attack(self):
-        # TODO: Attack selection logic? Probably based on target
-        # TODO: Improve naive attack selection logic vis. cooldowns
-        attacks_available = [attack for attack in self.attacks if attack.is_available()]
-        if len(attacks_available) == 0:
+    def _select_action(self):
+        # TODO: Better Action selection logic? Probably based on target
+        # TODO: Improve naive action selection logic vis. cooldowns
+
+        actions_available = [action for action in self.actions if action.is_available()]
+        if len(actions_available) == 0:
             return None
+
+        # Action selection logic, in order:
+
+        # If low on HP, try to use a heal
         if self._low_hp():
-            heals_available = [attack for attack in attacks_available if attack.is_heal]
+            heals_available = [action for action in actions_available if action.__class__.__subclasscheck__(Heal)]
             if heals_available:
-                return choice(heals_available)
-        return choice(attacks_available)
+                return heals_available.sort(key=lambda heal: heal.total_heal, reverse=True)[0]
+
+        # If you have something that inflicts a (negative) status, use it
+        attacks_with_statuses = [action for action in actions_available
+                                 if action.__class__.__subclasscheck__(Attack) and action.applies_statuses]
+        if attacks_with_statuses:
+            return choice(attacks_with_statuses)
+
+        # Pick the action with the highest sum of all damage types
+        actions_available.sort(key=lambda act: act.total_damage, reverse=True)
+        return actions_available[0]
 
     def _low_hp(self):
         return self.hp <= self.max_hp * 0.2
 
-    def receive_attack(self, attack_received):
+    def receive_action(self, action_received):
         try:
-            # Resolve whether the attack hit
-            attack_roll = random()
-            if attack_roll <= (1.0 - attack_received.accuracy):
-                print 'The attack misses!'
+            # Resolve whether the action hit
+            action_roll = random()
+            if action_roll <= (1.0 - action_received.accuracy):
+                print action_received.generate_message('failure', self.name)
                 return
             else:
-                print attack_received.success_message(self.name)
+                print action_received.generate_message('success', self.name)
 
             # Resolve damage reduction
-            if hasattr(attack_received, 'damage'):
-                for damage_type, damage_magnitude in attack_received.damage.iteritems():
+            if hasattr(action_received, 'damage'):
+                for damage_type, damage_magnitude in action_received.damage.iteritems():
                     # physical damage is calculated separately because it's intended to have other mechanics eventually
                     # TODO: specify other mechanics
                     if damage_type == 'physical':
@@ -141,9 +156,9 @@ class Actor(object):
                     else:
                         self.modify_hp(-(max(damage_magnitude - self.resistances.get(damage_type, 0), 0)))
 
-            # resolve any statuses the attack may apply
-            if hasattr(attack_received, 'applies_statuses'):
-                for status in attack_received.applies_statuses:
+            # resolve any statuses the action may apply
+            if hasattr(action_received, 'applies_statuses'):
+                for status in action_received.applies_statuses:
                     new_status = statuses.status_factory(status[0], status[1])
                     new_status.apply_to_actor(self)
 
@@ -151,74 +166,82 @@ class Actor(object):
             raise e
 
     def process_cooldowns(self):
-        for attack in self.attacks:
-            attack.process_cooldown()
+        for action in self.actions:
+            action.process_cooldown()
 
 
 class Devastator(Actor):
     def __init__(self, name):
         Actor.__init__(self, name)
         self.set_max_hp(80)
-        self.attacks_owned_by_class = [(Banhammer, {})]
-        self._instantiate_attacks()
+        self.actions_owned_by_class = [(Banhammer, {})]
+        self._instantiate_actions()
 
 
 class Human(Actor):
     def __init__(self, name):
         Actor.__init__(self, name)
-        self.set_max_hp(80)
-        self.attacks_owned_by_class = [(Fists, {})]
+        self.set_max_hp(50)
+        self.actions_owned_by_class = [(Fists, {})]
 
 
 class Thief(Human):
     def __init__(self, name):
         Human.__init__(self, name)
-        self.attacks_owned_by_class += [(PoisonedDagger, {})]
-        self._instantiate_attacks()
+        self.actions_owned_by_class += [(PoisonedDagger, {})]
+        self._instantiate_actions()
         self.armor = 1
 
 
 class Warrior(Human):
     def __init__(self, name):
         Human.__init__(self, name)
-        self.attacks_owned_by_class += [(Broadsword, {})]
-        self._instantiate_attacks()
+        self.actions_owned_by_class += [(Broadsword, {})]
+        self._instantiate_actions()
         self.armor = 2
 
 
 class Mage(Human):
     def __init__(self, name):
         Human.__init__(self, name)
-        self.attacks_owned_by_class += [(Fireball, {})]
-        self._instantiate_attacks()
+        self.actions_owned_by_class += [(Fireball, {})]
+        self._instantiate_actions()
         self.armor = 0
 
 
 class Priest(Human):
     def __init__(self, name):
         Human.__init__(self, name)
-        self.attacks_owned_by_class += [(RayOfFrost, {}), (MinorHeal, {})]
-        self._instantiate_attacks()
+        self.actions_owned_by_class += [(RayOfFrost, {}), (MinorHeal, {})]
+        self._instantiate_actions()
         self.armor = 0
 
 
 class Brigand(Human):
     def __init__(self, name):
         Human.__init__(self, name)
-        self.attacks_owned_by_class += [(SerratedCleaver, {})]
-        self._instantiate_attacks()
+        self.actions_owned_by_class += [(SerratedCleaver, {})]
+        self._instantiate_actions()
         self.armor = 1
 
 
-class InvalidAttackCall(Exception):
+class Grenadier(Human):
+    def __init__(self, name):
+        Human.__init__(self, name)
+        self.actions_owned_by_class += [(PitchVial, {}), (PitchVial, {}), (PitchVial, {})]
+        self._instantiate_actions()
+        self.armor = 0
+
+
+class InvalidActionCall(Exception):
     pass
 
 
-class InvalidAttackUsed(Exception):
+class InvalidActionUsed(Exception):
     pass
 
 
-class InvalidAttackTarget(Exception):
+class InvalidActionTarget(Exception):
     pass
 
 

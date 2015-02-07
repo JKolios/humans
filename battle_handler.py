@@ -20,7 +20,7 @@ class Battlehandler(object):
             if actor.can_act:
                 available_targets = [target for target in self.active_actors if target is not actor]
                 try:
-                    actor.attack(available_targets=available_targets)
+                    actor.take_action(available_targets=available_targets)
                 except actors.Death as e:
                     self.active_actors.remove(e.dead_creature)
                     if e.dead_creature is actor:
