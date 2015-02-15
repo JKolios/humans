@@ -1,8 +1,12 @@
 import statuses
+from metaclasses import RegisterLeafClasses
+
 
 INFINITE = -1
 
+
 class Action(object):
+    __metaclass__ = RegisterLeafClasses
     name = 'Generic Action'
     is_heal = False
     cooldown_per_use = 0
