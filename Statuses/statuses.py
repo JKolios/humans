@@ -1,5 +1,9 @@
+from metaclasses import RegisterLeafClasses
+
+
 # TODO: prevent double application of same status
 class Status(object):
+    __metaclass__ = RegisterLeafClasses
     status_applied_message = ''
     effect_applied_message = ''
     status_removed_message = ''

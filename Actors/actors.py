@@ -2,15 +2,17 @@ from random import choice, random
 
 from actions import *
 import statuses
+from metaclasses import RegisterLeafClasses
 
 
 DEFAULT_MAX_HP = 100
 
-status_string_living = '%s\nCLASS: %s\nHP: %s\nSTATUSES: %s'
-status_string_dead = '%s\nCLASS: %s\n-DEAD-'
+status_string_living = '%s\nCLASS: %s\nHP: %s\nSTATUSES: %s\n'
+status_string_dead = '%s\nCLASS: %s\n-DEAD-\n'
 
 
 class Actor(object):
+    __metaclass__ = RegisterLeafClasses
     actions_owned_by_class = []
 
     def __init__(self, name):
