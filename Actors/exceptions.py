@@ -1,0 +1,2 @@
+class InvalidActor(Exception):
+    pass

@@ -1,8 +1,5 @@
-import actors
-
-
-class InvalidActor(Exception):
-    pass
+import actors.actors as actors
+from actors.exceptions import InvalidActor
 
 
 class Battlehandler(object):
@@ -14,8 +11,14 @@ class Battlehandler(object):
 
         self.turn_number = 0
 
+    @staticmethod
+    def _validate_actor_list(actor_list):
+            for actor in actor_list:
+                if not issubclass(actor.__class__, actors.Actor):
+                    raise InvalidActor
+
     def _turn_loop(self):
-        print '\nTurn %s begins!' % self.turn_number
+        print('\nTurn %s begins!' % self.turn_number)
         for actor in self.active_actors:
             if actor.can_act:
                 available_targets = [target for target in self.active_actors if target is not actor]
@@ -26,7 +29,7 @@ class Battlehandler(object):
                     if e.dead_creature is actor:
                         continue
             try:
-                actor.process_statuses()
+                actor.process_effects()
             except actors.Death as e:
                 self.active_actors.remove(e.dead_creature)
                 if e.dead_creature is actor:
@@ -41,14 +44,10 @@ class Battlehandler(object):
         while len(self.active_actors) > 1:
             self._turn_loop()
         if len(self.active_actors) == 1:
-            print '%s has conquered!' % self.active_actors[0].name
-            print '\nLast fighter standing\n%s' % self.active_actors[0]
+            print('%s has conquered!' % self.active_actors[0].name)
+            print('\nLast fighter standing\n%s' % self.active_actors[0])
         elif len(self.active_actors) == 0:
-            print 'There were no survivors!'
+            print('There were no survivors!')
 
-    @staticmethod
-    def _validate_actor_list(actor_list):
-            for actor in actor_list:
-                if not issubclass(actor.__class__, actors.Actor):
-                    raise InvalidActor
+
 

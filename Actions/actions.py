@@ -1,27 +1,24 @@
-import statuses
-from metaclasses import RegisterLeafClasses
+import effects
+import metaclasses
+import constants
+from .exceptions import InvalidDescriptionArguments
 
 
-INFINITE = -1
-
-
-class Action(object):
-    __metaclass__ = RegisterLeafClasses
+class Action(object, metaclass=metaclasses.RegisterLeafClasses):
     name = 'Generic Action'
     is_heal = False
     cooldown_per_use = 0
-    available_uses = INFINITE
+    available_uses = constants.INFINITE
     damage = {}
     accuracy = 1.0
-    applies_statuses = []
+    applies_effects = []
     descriptions = {
         'attempt': 'Attempt Placeholder!',
         'success': 'Success Placeholder!',
         'failure': 'Failure Placeholder!'
     }
 
-    def __init__(self, kwargs):
-        # kwargs may be used in the future to supply instance init data
+    def __init__(self):
         self.cooldown = 0
         self.times_used = 0
 
@@ -56,7 +53,7 @@ class Action(object):
     @property
     def total_damage(self):
         total = 0
-        for damage_type in self.damage.keys():
+        for damage_type in list(self.damage.keys()):
             total += self.damage[damage_type]
         return total
 
@@ -90,7 +87,7 @@ class Broadsword(Attack):
 class PoisonedDagger(Attack):
     name = 'Poisoned Dagger'
     damage = {'physical': 5}
-    applies_statuses = [(statuses.Poison, {'duration': 4, 'intensity': 4})]
+    applies_effects = [(effects.Poison, {'duration': 4, 'intensity': 4})]
     accuracy = 0.75
     descriptions = {
         'attempt': '%s stabs at %s with a poisoned dagger!',
@@ -102,7 +99,7 @@ class PoisonedDagger(Attack):
 class SerratedCleaver(Attack):
     name = 'Serrated Cleaver'
     damage = {'physical': 8}
-    applies_statuses = [(statuses.Bleeding, {'duration': 5})]
+    applies_effects = [(effects.Bleeding, {'duration': 5})]
     accuracy = 0.8
     descriptions = {
         'attempt': '%s swings at %s with a serrated cleaver!',
@@ -130,15 +127,15 @@ class Heal(Action):
     @property
     def total_heal(self):
         total = 0
-        for status in self.applies_statuses:
-            if status[0] is statuses.Healing:
+        for status in self.applies_effects:
+            if status[0] is effects.Healing:
                 total += status[1]['duration'] * status[1]['intensity']
         return total
 
 
 class MinorHeal(Heal):
     name = 'Minor Heal'
-    applies_statuses = [(statuses.Healing, {'duration': 1, 'intensity': 10})]
+    applies_effects = [(effects.Healing, {'duration': 1, 'intensity': 10})]
     cooldown_per_use = 2
     descriptions = {
         'attempt':  '%s uses Minor Heal!',
@@ -150,7 +147,7 @@ class MinorHeal(Heal):
 class RayOfFrost(Attack):
     name = 'Ray of Frost'
     damage = {'frost': 3}
-    applies_statuses = [(statuses.Frozen, {'duration': 2})]
+    applies_effects = [(effects.Frozen, {'duration': 2})]
     accuracy = 0.6
     cooldown_per_use = 2
     descriptions = {
@@ -184,16 +181,6 @@ class PitchVial(Attack):
     }
 
 
-def action_factory(action_class, kwargs):
-    if not Action.__subclasscheck__(action_class):
-        raise InvalidFactoryArgument
-    return action_class(kwargs)
-
-
-class InvalidFactoryArgument(Exception):
-    pass
-
-
-class InvalidDescriptionArguments(Exception):
-    pass
+def action_factory(action_class, args):
+    return action_class(args)
 

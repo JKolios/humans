@@ -3,7 +3,7 @@ from random import choice, randint
 import actors
 import battle
 
-""" TODO: add new statuses(STUUUNNN), Heals and heal target logic?, Random events per turn."""
+""" TODO: add new effects(STUUUNNN), Heals and heal target logic?, Random events per turn."""
 
 DEFAULT_ACTOR_LIST = [
     actors.Thief('Alice'),
@@ -25,7 +25,7 @@ def random_actor_list():
     actor_count = randint(2, 6)
     for i in range(actor_count):
         random_actor = choice(list(actors.Actor.registry))(choice(NAME_LIST))
-        print random_actor
+        print(random_actor)
         actor_list.append(random_actor)
     return actor_list
 

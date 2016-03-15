@@ -1,9 +1,9 @@
+from .exceptions import InvalidStatusDuration
 from metaclasses import RegisterLeafClasses
+import constants
 
 
-# TODO: prevent double application of same status
-class Status(object):
-    __metaclass__ = RegisterLeafClasses
+class Status(object, metaclass=RegisterLeafClasses):
     status_applied_message = ''
     effect_applied_message = ''
     status_removed_message = ''
@@ -15,14 +15,14 @@ class Status(object):
     def apply_to_actor(self, actor):
         self.actor_affected = actor
         # Do not apply the same effect object twice
-        if self not in self.actor_affected.statuses:
+        if self not in self.actor_affected.effects:
             if self.status_applied_message:
-                print self.status_applied_message % self.actor_affected.name
-            self.actor_affected.statuses.append(self)
+                print(self.status_applied_message % self.actor_affected.name)
+            self.actor_affected.effects.append(self)
 
     def apply_effect_and_check_duration(self):
         if self.effect_applied_message:
-            print self.effect_applied_message % self.actor_affected.name
+            print(self.effect_applied_message % self.actor_affected.name)
         self._apply_effect()
         if self.duration == 0:
             self._remove_from_actor()
@@ -30,10 +30,10 @@ class Status(object):
             raise InvalidStatusDuration
 
     def _remove_from_actor(self):
-        if self in self.actor_affected.statuses:
+        if self in self.actor_affected.effects:
             if self.status_removed_message:
-                print self.status_removed_message % self.actor_affected.name
-            self.actor_affected.statuses.remove(self)
+                print(self.status_removed_message % self.actor_affected.name)
+            self.actor_affected.effects.remove(self)
 
     def _apply_effect(self):
         pass
@@ -81,18 +81,18 @@ class Frozen(Status):
 
     def apply_to_actor(self, actor):
         self.actor_affected = actor
-        if self not in self.actor_affected.statuses:
-            print self.status_applied_message % self.actor_affected.name
-            self.actor_affected.statuses.append(self)
+        if self not in self.actor_affected.effects:
+            print(self.status_applied_message % self.actor_affected.name)
+            self.actor_affected.effects.append(self)
             self.actor_affected.can_act = False
 
     def _apply_effect(self):
         self.duration -= 1
 
     def _remove_from_actor(self):
-        if self in self.actor_affected.statuses:
-            print self.status_removed_message % self.actor_affected.name
-            self.actor_affected.statuses.remove(self)
+        if self in self.actor_affected.effects:
+            print(self.status_removed_message % self.actor_affected.name)
+            self.actor_affected.effects.remove(self)
             self.actor_affected.can_act = True
 
 
@@ -114,33 +114,14 @@ class Death(Status):
     status_applied_message = '%s has died!'
 
     def __init__(self):
-        Status.__init__(self, duration=-1)
+        Status.__init__(self, duration=constants.INFINITE)
 
     def apply_to_actor(self, actor):
         self.actor_affected = actor
-        if self not in self.actor_affected.statuses:
-            print self.status_applied_message % self.actor_affected.name
-            self.actor_affected.statuses = [self]
-
-
-class InvalidStatusDuration(Exception):
-
-    def __init__(self, actor, status):
-        super(InvalidStatusDuration, self).__init__()
-        self.actor = actor
-        self.status = status
+        if self not in self.actor_affected.effects:
+            print(self.status_applied_message % self.actor_affected.name)
+            self.actor_affected.effects = [self]
 
 
 def status_factory(status_class, kwargs):
-    if not Status.__subclasscheck__(status_class):
-        raise InvalidFactoryArgument
     return status_class(kwargs)
-
-
-class InvalidFactoryArgument(Exception):
-    pass
-
-
-
-
-
