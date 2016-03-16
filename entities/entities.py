@@ -1,28 +1,27 @@
 from random import choice, random
 
-import actions
 import effects
-import metaclasses
 import collections
 
 from actions.exceptions import InvalidActionCall, InvalidActionUsed, InvalidActionTarget
 
+LIVING_STATUS_STRING = '%s\nCLASS: %s\nHP: %s\nSTATUSES: %s\n'
+DEAD_STATUS_STRING = '%s\nCLASS: %s\n-DEAD-\n'
+
 DEFAULT_MAX_HP = 100
 
-status_string_living = '%s\nCLASS: %s\nHP: %s\nSTATUSES: %s\n'
-status_string_dead = '%s\nCLASS: %s\n-DEAD-\n'
+class Entity(object):
 
-
-class Actor(object, metaclass=metaclasses.RegisterLeafClasses):
-    actions_owned_by_class = []
-
-    def __init__(self, name):
+    def __init__(self, name, character_class=None, class_initializers=None):
         self.name = name
+        if character_class:
+            underlying_class = character_class(class_initializers) if class_initializers else character_class()
+        else:
+            underlying_class = None
+        self.character_class = underlying_class
 
-        self.max_hp = DEFAULT_MAX_HP
-        self.hp = self.max_hp
+        self.hp = self.underlying_class.max_hp
 
-        self.effects = []
         self.regen_per_turn = 1
 
         self.armor = 0
@@ -34,35 +33,25 @@ class Actor(object, metaclass=metaclasses.RegisterLeafClasses):
         }
 
         self.actions = []
+        self.effects = []
 
         self.can_act = True
 
     def __repr__(self):
         if effects.Death in self.effects:
-            return status_string_dead % (self.name, self.__class__.__name__)
+            return DEAD_STATUS_STRING % (self.name, self.__class__.__name__)
         else:
-            return status_string_living % (
+            return LIVING_STATUS_STRING % (
                 self.name, self.__class__.__name__,
                 self.hp,
                 [status.name for status in self.effects])
 
-    def _instantiate_actions(self):
-        for init_tuple in self.actions_owned_by_class:
-            self.actions.append(actions.action_factory(init_tuple[0], init_tuple[1]))
-
-    def set_max_hp(self, max_hp):
-        self.max_hp = max_hp
-        self.hp = self.max_hp
 
     def process_effects(self):
-        try:
-            for status in self.effects:
-                status.apply_effect_and_check_duration()
-            if len(self.effects) == 0 and self.hp < self.max_hp:
-                self.modify_hp(self.regen_per_turn)
-
-        except Death as e:
-            raise e
+        for status in self.effects:
+            status.apply_effect_and_check_duration()
+        if len(self.effects) == 0 and self.hp < self.max_hp:
+            self.modify_hp(self.regen_per_turn)
 
     def modify_hp(self, hp_delta):
         actual_delta = min(hp_delta, self.max_hp - self.hp)
@@ -106,7 +95,7 @@ class Actor(object, metaclass=metaclasses.RegisterLeafClasses):
 
     def _select_target(self, available_targets, action):
         # TODO: Target selection logic?
-        if action.is_heal:
+        if isinstance(action, actions.Heal):
             return self
         return choice(available_targets)
 
@@ -114,7 +103,7 @@ class Actor(object, metaclass=metaclasses.RegisterLeafClasses):
         # TODO: Better Action selection logic? Probably based on target
         # TODO: Improve naive action selection logic vis. cooldowns
 
-        actions_available = [action for action in self.actions if action.is_available()]
+        actions_available = [action for action in self.actions if action.is_available]
         if len(actions_available) == 0:
             return None
 
@@ -174,68 +163,6 @@ class Actor(object, metaclass=metaclasses.RegisterLeafClasses):
         for action in self.actions:
             action.process_cooldown()
 
-
-class Devastator(Actor):
-    def __init__(self, name):
-        Actor.__init__(self, name)
-        self.set_max_hp(80)
-        self.actions_owned_by_class = [(actions.Banhammer, {})]
-        self._instantiate_actions()
-
-
-class Human(Actor):
-    def __init__(self, name):
-        Actor.__init__(self, name)
-        self.set_max_hp(50)
-        self.actions_owned_by_class = [(actions.Fists, {})]
-
-
-class Thief(Human):
-    def __init__(self, name):
-        Human.__init__(self, name)
-        self.actions_owned_by_class += [(actions.PoisonedDagger, {})]
-        self._instantiate_actions()
-        self.armor = 1
-
-
-class Warrior(Human):
-    def __init__(self, name):
-        Human.__init__(self, name)
-        self.actions_owned_by_class += [(actions.Broadsword, {})]
-        self._instantiate_actions()
-        self.armor = 2
-
-
-class Mage(Human):
-    def __init__(self, name):
-        Human.__init__(self, name)
-        self.actions_owned_by_class += [(actions.Fireball, {})]
-        self._instantiate_actions()
-        self.armor = 0
-
-
-class Priest(Human):
-    def __init__(self, name):
-        Human.__init__(self, name)
-        self.actions_owned_by_class += [(actions.RayOfFrost, {}), (actions.MinorHeal, {})]
-        self._instantiate_actions()
-        self.armor = 0
-
-
-class Brigand(Human):
-    def __init__(self, name):
-        Human.__init__(self, name)
-        self.actions_owned_by_class += [(actions.SerratedCleaver, {})]
-        self._instantiate_actions()
-        self.armor = 1
-
-
-class Grenadier(Human):
-    def __init__(self, name):
-        Human.__init__(self, name)
-        self.actions_owned_by_class += [(actions.PitchVial, {}), (actions.PitchVial, {}), (actions.PitchVial, {})]
-        self._instantiate_actions()
-        self.armor = 0
 
 
 class Death(Exception):

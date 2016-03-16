@@ -1,12 +1,12 @@
+import abc
+
 import effects
-import metaclasses
 import constants
 from .exceptions import InvalidDescriptionArguments
 
 
-class Action(object, metaclass=metaclasses.RegisterLeafClasses):
+class Action(object, metaclass=abc.ABCMeta):
     name = 'Generic Action'
-    is_heal = False
     cooldown_per_use = 0
     available_uses = constants.INFINITE
     damage = {}
@@ -18,7 +18,7 @@ class Action(object, metaclass=metaclasses.RegisterLeafClasses):
         'failure': 'Failure Placeholder!'
     }
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.cooldown = 0
         self.times_used = 0
 
@@ -27,6 +27,7 @@ class Action(object, metaclass=metaclasses.RegisterLeafClasses):
         self.cooldown += self.cooldown_per_use + 1
         self.available_uses = min(self.available_uses - 1, 0)
 
+    @property
     def is_available(self):
         return self.cooldown == 0 and self.available_uses != 0
 
@@ -121,7 +122,6 @@ class Fireball(Attack):
 
 
 class Heal(Action):
-    is_heal = True
     accuracy = 1
 
     @property
@@ -179,8 +179,3 @@ class PitchVial(Attack):
         'success': '%s is engulfed in flaming pitch!',
         'failure': 'The vial misses %s and shatters on the ground, creating a flaming pit!',
     }
-
-
-def action_factory(action_class, args):
-    return action_class(args)
-

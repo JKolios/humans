@@ -1,9 +1,10 @@
+import abc
+
 from .exceptions import InvalidStatusDuration
-from metaclasses import RegisterLeafClasses
 import constants
 
 
-class Status(object, metaclass=RegisterLeafClasses):
+class Status(object, metaclass=abc.ABCMeta):
     status_applied_message = ''
     effect_applied_message = ''
     status_removed_message = ''
@@ -35,6 +36,7 @@ class Status(object, metaclass=RegisterLeafClasses):
                 print(self.status_removed_message % self.actor_affected.name)
             self.actor_affected.effects.remove(self)
 
+    @abc.abstractmethod
     def _apply_effect(self):
         pass
 

@@ -1,5 +1,5 @@
-import actors.actors as actors
-from actors.exceptions import InvalidActor
+import character_classes.classes as actors
+from character_classes.exceptions import InvalidActor
 
 
 class Battlehandler(object):
@@ -14,7 +14,7 @@ class Battlehandler(object):
     @staticmethod
     def _validate_actor_list(actor_list):
             for actor in actor_list:
-                if not issubclass(actor.__class__, actors.Actor):
+                if not issubclass(actor.__class__, actors.CharacterClass):
                     raise InvalidActor
 
     def _turn_loop(self):
